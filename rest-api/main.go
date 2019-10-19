@@ -21,7 +21,7 @@ type User struct {
 
 var client *mongo.Client
 
-func CreatePersonEndpoint(w http.ResponseWriter, r *http.Request) {
+func CreateUserEndpoint(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("content-type", "application/json")
 	var user User
 	json.NewDecoder(r.Body).Decode(&user)
@@ -32,12 +32,29 @@ func CreatePersonEndpoint(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func GetUserEndpoint(response http.ResponseWriter, request *http.Request) {
+	response.Header().Set("content-type", "application/json")
+	params := mux.Vars(request)
+	id, _ := primitive.ObjectIDFromHex(params["id"])
+	var user User
+	collection := client.Database("thepolyglotdeveloper").Collection("people")
+	ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
+	err := collection.FindOne(ctx, User{ID: id}).Decode(&user)
+	if err != nil {
+		response.WriteHeader(http.StatusInternalServerError)
+		response.Write([]byte(`{ "message": "` + err.Error() + `" }`))
+		return
+	}
+	json.NewEncoder(response).Encode(user)
+}
+
 func main() {
 	fmt.Println("Starting the application...")
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
 	client, _ = mongo.Connect(ctx, clientOptions)
 	router := mux.NewRouter()
-	router.HandleFunc("/user", CreatePersonEndpoint).Methods("POST")
+	router.HandleFunc("/user", CreateUserEndpoint).Methods("POST")
+	router.HandleFunc("/user/{id}", GetUserEndpoint).Methods("GET")
 	http.ListenAndServe(":8000", router)
 }

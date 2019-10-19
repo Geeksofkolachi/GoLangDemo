@@ -25,8 +25,8 @@ var client *mongo.Client
 func CreateUserEndpoint(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("content-type", "application/json")
 	var user User
-	json.NewDecoder(r.Body).Decode(&user)
-	collection := client.Database("Application").Collection("users")
+	_ = json.NewDecoder(r.Body).Decode(&user)
+	collection := client.Database("userstory").Collection("users")
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	result, _ := collection.InsertOne(ctx, user)
 	json.NewEncoder(w).Encode(result)
@@ -34,12 +34,12 @@ func CreateUserEndpoint(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetUserEndpoint(w http.ResponseWriter, request *http.Request) {
-	w.Header().Set("content-type", "application/json")
+	w.Header().Add("content-type", "application/json")
 	params := mux.Vars(request)
 	id, _ := primitive.ObjectIDFromHex(params["id"])
 	fmt.Println(id)
 	var user User
-	collection := client.Database("Application").Collection("users")
+	collection := client.Database("userstory").Collection("users")
 	ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
 	err := collection.FindOne(ctx, User{ID: id}).Decode(&user)
 	if err != nil {
@@ -53,7 +53,7 @@ func GetUserEndpoint(w http.ResponseWriter, request *http.Request) {
 func GetUsersEndpoint(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("content-type", "application/json")
 	var users []User
-	collection := client.Database("Application").Collection("users")
+	collection := client.Database("userstory").Collection("users")
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	cursor, err := collection.Find(ctx, bson.M{})
 	if err != nil {
@@ -79,6 +79,8 @@ func main() {
 	fmt.Println("Starting the application...")
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
+	// clientOptions := options.Client().ApplyURI("mongodb://admin:admin123@ds137368.mlab.com:37368/uit-tables")
+	// clientOptions := options.Client().ApplyURI("mongodb://admin:admin123@ds041613.mlab.com:41613")
 	client, _ = mongo.Connect(ctx, clientOptions)
 	router := mux.NewRouter()
 	router.HandleFunc("/user", CreateUserEndpoint).Methods("POST")
